@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hospitals List</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        #searchBar, #filterSelect { padding: 8px; width: 200px; margin-right: 10px; max-width: 200px; }
+        #pagination { margin-top: 20px; }
+        .page-link { padding: 5px 10px; border: 1px solid #ccc; margin: 2px; cursor: pointer; }
+        .active-page { background-color: #007BFF; color: white; }
+        .choices { width:18%; }
+        .choices__list--dropdown { max-width: 250px; word-break: break-word; } 
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+</head>
+<body>
+
+<h2>Hospital Database</h2>
+<input type="text" id="searchBar" placeholder="Search anything...">
+<select id="filterSelect">
+    <option value="">All Hospitals</option>
+</select>
+
+<table id="dataTable">
+    <thead></thead>
+    <tbody></tbody>
+</table>
+
+<div id="pagination"></div>
+
+<script>
+let allData = [];
+let filteredData = [];
+let currentPage = 1;
+const rowsPerPage = 10;
+
+// Fetch published CSV (replace URL with your Sheet's published CSV link)
+// fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRv1zjVKuLXAsjMoPKOQ5rhVjZUW_iMqqh2t4k-vQoHUj0Rok78a0Q43a3Q6hk7v2Du3Keh0DLa0cGc/pub?gid=2860923&single=true&output=csv')
+//     .then(response => response.text())
+//     .then(data => {
+//         allData = csvToArray(data);
+//         populateFilter();
+//         filterAndRender();
+//     });
+
+fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRv1zjVKuLXAsjMoPKOQ5rhVjZUW_iMqqh2t4k-vQoHUj0Rok78a0Q43a3Q6hk7v2Du3Keh0DLa0cGc/pub?gid=2860923&single=true&output=csv')
+  .then(response => response.text())
+  .then(csvText => {
+    const parsed = Papa.parse(csvText, { header: false });
+    allData = parsed.data;
+    populateFilter();
+    filterAndRender();
+    const choices = new Choices('#filterSelect', {
+        searchEnabled: true,
+        itemSelectText: '',
+        shouldSort: false,
+        placeholderValue: 'All Hospitals'
+    });
+  });
+
+
+
+function csvToArray(str) {
+    const rows = str.trim().split('\n');
+    return rows.map(row => row.split(','));
+}
+
+function populateFilter() {
+    const deptSet = new Set();
+    allData.slice(1).forEach(row => deptSet.add(row[1])); // Assuming column 3 is Department
+    const filter = document.getElementById('filterSelect');
+    deptSet.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept;
+        option.textContent = dept;
+        filter.appendChild(option);
+    });
+}
+
+function filterAndRender() {
+    const query = document.getElementById('searchBar').value.toLowerCase();
+    const selectedFilter = document.getElementById('filterSelect').value;
+
+    filteredData = allData.filter((row, index) => {
+        if (index === 0) return false; // Skip header
+        const matchesSearch = row.some(cell => cell.toLowerCase().includes(query));
+        const matchesFilter = selectedFilter ? row[2] === selectedFilter : true; // Assuming 3rd column filter
+        return matchesSearch && matchesFilter;
+    });
+    renderTable();
+    renderPagination();
+}
+
+function renderTable() {
+    const tableHead = document.querySelector('#dataTable thead');
+    const tableBody = document.querySelector('#dataTable tbody');
+    tableHead.innerHTML = '';
+    tableBody.innerHTML = '';
+
+    if (allData.length > 0) {
+        const headerRow = allData[0].map(h => `<th>${h}</th>`).join('');
+        tableHead.innerHTML = `<tr>${headerRow}</tr>`;
+    }
+
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const paginatedItems = filteredData.slice(start, end);
+
+    paginatedItems.forEach(row => {
+        const rowHTML = row.map(cell => `<td>${cell}</td>`).join('');
+        tableBody.innerHTML += `<tr>${rowHTML}</tr>`;
+    });
+}
+
+function renderPagination() {
+    const pageCount = Math.ceil(filteredData.length / rowsPerPage);
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+
+    for (let i = 1; i <= pageCount; i++) {
+        const btn = document.createElement('span');
+        btn.textContent = i;
+        btn.className = 'page-link' + (i === currentPage ? ' active-page' : '');
+        btn.onclick = () => {
+            currentPage = i;
+            renderTable();
+            renderPagination();
+        };
+        pagination.appendChild(btn);
+    }
+}
+
+document.getElementById('searchBar').addEventListener('input', () => {
+    currentPage = 1;
+    filterAndRender();
+});
+
+document.getElementById('filterSelect').addEventListener('change', () => {
+    currentPage = 1;
+    filterAndRender();
+});
+</script>
+
+</body>
+</html>
