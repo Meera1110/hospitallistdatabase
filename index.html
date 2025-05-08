@@ -1,152 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Hospitals List</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        #searchBar, #filterSelect { padding: 8px; width: 200px; margin-right: 10px; max-width: 200px; }
-        #pagination { margin-top: 20px; }
-        .page-link { padding: 5px 10px; border: 1px solid #ccc; margin: 2px; cursor: pointer; }
-        .active-page { background-color: #007BFF; color: white; }
-        .choices { width:18%; }
-        .choices__list--dropdown { max-width: 250px; word-break: break-word; } 
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search & Filter Google Sheet Data</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 1rem; font-size: 16px; }
+    h2 { font-size: 1.8rem; }
+    input, select { padding: 0.5rem; font-size: 1rem; max-width: 100%; box-sizing: border-box; margin-right: 10px; }
+    .table-container { overflow-x: auto; width: 100%; margin-top: 20px; }
+    table { border-collapse: collapse; width: 100%; min-width: 600px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    #pagination-wrapper { margin-top: 20px; overflow-x: auto; width: 100%; }
+    #pagination { display: flex; gap: 5px; justify-content: center; padding: 10px 0; }
+    .page-link { padding: 5px 10px; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; white-space: nowrap; }
+    .active-page { background-color: #007BFF; color: white; }
+    #helpBtn { float: right; cursor: pointer; background: none; border: none; font-size: 1.2rem; }
+    .modal { display: none; position: fixed; z-index: 9999; padding-top: 100px; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+    .modal-content { background-color: #fff; margin: auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 8px; }
+    .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+  </style>
 </head>
 <body>
 
-<h2>Hospital Database</h2>
+<h2>
+  Searchable Hospital Database
+  <button id="helpBtn" title="Help">❓</button>
+</h2>
 <input type="text" id="searchBar" placeholder="Search anything...">
 <select id="filterSelect">
-    <option value="">All Hospitals</option>
+  <option value="">All Departments</option>
 </select>
 
-<table id="dataTable">
+<div class="table-container">
+  <table id="dataTable">
     <thead></thead>
     <tbody></tbody>
-</table>
+  </table>
+</div>
 
-<div id="pagination"></div>
+<div id="pagination-wrapper">
+  <div id="pagination"></div>
+</div>
 
+<!-- Help Modal -->
+<div id="helpModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h3>SSS – MAGMA NETWORKED HOSPITALS DATABASE</h3>
+    <p><strong>Updated as on Mar 15, 2025</strong></p>
+    <p>You may use any one of the following keys to search the database:</p>
+    <ul>
+      <li>Location (Chennai, Mumbai etc)</li>
+      <li>State</li>
+      <li>Hospital Name (to be spelt correctly)</li>
+      <li>Pin Code</li>
+      <li>Any part of the address (to be spelt correctly). This is not a very efficient search though.</li>
+    </ul>
+    <p>When search results span across many pages, the page numbers appear at the bottom of the Search Page. Click on the page number to navigate to the respective page.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
 let allData = [];
 let filteredData = [];
 let currentPage = 1;
 const rowsPerPage = 10;
 
-// Fetch published CSV (replace URL with your Sheet's published CSV link)
-// fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRv1zjVKuLXAsjMoPKOQ5rhVjZUW_iMqqh2t4k-vQoHUj0Rok78a0Q43a3Q6hk7v2Du3Keh0DLa0cGc/pub?gid=2860923&single=true&output=csv')
-//     .then(response => response.text())
-//     .then(data => {
-//         allData = csvToArray(data);
-//         populateFilter();
-//         filterAndRender();
-//     });
-
 fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRv1zjVKuLXAsjMoPKOQ5rhVjZUW_iMqqh2t4k-vQoHUj0Rok78a0Q43a3Q6hk7v2Du3Keh0DLa0cGc/pub?gid=2860923&single=true&output=csv')
   .then(response => response.text())
-  .then(csvText => {
-    const parsed = Papa.parse(csvText, { header: false });
+  .then(data => {
+    const parsed = Papa.parse(data, { header: false });
     allData = parsed.data;
     populateFilter();
     filterAndRender();
-    const choices = new Choices('#filterSelect', {
-        searchEnabled: true,
-        itemSelectText: '',
-        shouldSort: false,
-        placeholderValue: 'All Hospitals'
-    });
   });
 
-
-
-function csvToArray(str) {
-    const rows = str.trim().split('\n');
-    return rows.map(row => row.split(','));
-}
-
 function populateFilter() {
-    const deptSet = new Set();
-    allData.slice(1).forEach(row => deptSet.add(row[1])); // Assuming column 3 is Department
-    const filter = document.getElementById('filterSelect');
-    deptSet.forEach(dept => {
-        const option = document.createElement('option');
-        option.value = dept;
-        option.textContent = dept;
-        filter.appendChild(option);
-    });
+  const deptSet = new Set();
+  allData.slice(1).forEach(row => deptSet.add(row[2]));
+  const filter = document.getElementById('filterSelect');
+  deptSet.forEach(dept => {
+    const option = document.createElement('option');
+    option.value = dept;
+    option.textContent = dept;
+    filter.appendChild(option);
+  });
+  new Choices('#filterSelect', { searchEnabled: true, itemSelectText: '', shouldSort: false });
 }
 
 function filterAndRender() {
-    const query = document.getElementById('searchBar').value.toLowerCase();
-    const selectedFilter = document.getElementById('filterSelect').value;
-
-    filteredData = allData.filter((row, index) => {
-        if (index === 0) return false; // Skip header
-        const matchesSearch = row.some(cell => cell.toLowerCase().includes(query));
-        const matchesFilter = selectedFilter ? row[2] === selectedFilter : true; // Assuming 3rd column filter
-        return matchesSearch && matchesFilter;
-    });
-    renderTable();
-    renderPagination();
+  const query = document.getElementById('searchBar').value.toLowerCase();
+  const selectedFilter = document.getElementById('filterSelect').value;
+  filteredData = allData.filter((row, index) => {
+    if (index === 0) return false;
+    const matchesSearch = row.some(cell => cell.toLowerCase().includes(query));
+    const matchesFilter = selectedFilter ? row[2] === selectedFilter : true;
+    return matchesSearch && matchesFilter;
+  });
+  renderTable();
+  renderPagination();
 }
 
 function renderTable() {
-    const tableHead = document.querySelector('#dataTable thead');
-    const tableBody = document.querySelector('#dataTable tbody');
-    tableHead.innerHTML = '';
-    tableBody.innerHTML = '';
-
-    if (allData.length > 0) {
-        const headerRow = allData[0].map(h => `<th>${h}</th>`).join('');
-        tableHead.innerHTML = `<tr>${headerRow}</tr>`;
-    }
-
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    const paginatedItems = filteredData.slice(start, end);
-
-    paginatedItems.forEach(row => {
-        const rowHTML = row.map(cell => `<td>${cell}</td>`).join('');
-        tableBody.innerHTML += `<tr>${rowHTML}</tr>`;
-    });
+  const tableHead = document.querySelector('#dataTable thead');
+  const tableBody = document.querySelector('#dataTable tbody');
+  tableHead.innerHTML = '';
+  tableBody.innerHTML = '';
+  if (allData.length > 0) {
+    const headerRow = allData[0].map(h => `<th>${h}</th>`).join('');
+    tableHead.innerHTML = `<tr>${headerRow}</tr>`;
+  }
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const paginatedItems = filteredData.slice(start, end);
+  paginatedItems.forEach(row => {
+    const rowHTML = row.map(cell => `<td>${cell}</td>`).join('');
+    tableBody.innerHTML += `<tr>${rowHTML}</tr>`;
+  });
 }
 
 function renderPagination() {
-    const pageCount = Math.ceil(filteredData.length / rowsPerPage);
-    const pagination = document.getElementById('pagination');
-    pagination.innerHTML = '';
+  const pagination = document.getElementById('pagination');
+  pagination.innerHTML = '';
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
-    for (let i = 1; i <= pageCount; i++) {
-        const btn = document.createElement('span');
-        btn.textContent = i;
-        btn.className = 'page-link' + (i === currentPage ? ' active-page' : '');
-        btn.onclick = () => {
-            currentPage = i;
-            renderTable();
-            renderPagination();
-        };
-        pagination.appendChild(btn);
-    }
+  const createButton = (label, targetPage, isActive = false) => {
+    const btn = document.createElement('span');
+    btn.textContent = label;
+    btn.className = 'page-link' + (isActive ? ' active-page' : '');
+    btn.onclick = () => {
+      currentPage = targetPage;
+      renderTable();
+      renderPagination();
+    };
+    return btn;
+  };
+
+  if (currentPage > 1) {
+    pagination.appendChild(createButton('«', currentPage - 1));
+  }
+
+  if (currentPage > 2) {
+    pagination.appendChild(createButton('1', 1));
+    if (currentPage > 3) pagination.appendChild(createButton('...', currentPage - 2));
+  }
+
+  pagination.appendChild(createButton(currentPage, currentPage, true));
+
+  if (currentPage < totalPages - 1) {
+    if (currentPage < totalPages - 2) pagination.appendChild(createButton('...', currentPage + 2));
+    pagination.appendChild(createButton(totalPages, totalPages));
+  }
+
+  if (currentPage < totalPages) {
+    pagination.appendChild(createButton('»', currentPage + 1));
+  }
 }
 
 document.getElementById('searchBar').addEventListener('input', () => {
-    currentPage = 1;
-    filterAndRender();
+  currentPage = 1;
+  filterAndRender();
 });
 
 document.getElementById('filterSelect').addEventListener('change', () => {
-    currentPage = 1;
-    filterAndRender();
+  currentPage = 1;
+  filterAndRender();
 });
-</script>
 
+const modal = document.getElementById("helpModal");
+const btn = document.getElementById("helpBtn");
+const span = document.querySelector(".close");
+
+window.onload = () => { modal.style.display = "block"; };
+btn.onclick = () => { modal.style.display = "block"; };
+span.onclick = () => { modal.style.display = "none"; };
+window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; };
+</script>
 </body>
 </html>
