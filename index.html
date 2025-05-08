@@ -3,32 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Search & Filter Google Sheet Data</title>
+  <title>Hospital Database Search</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
   <style>
-    body { font-family: Arial, sans-serif; padding: 1rem; font-size: 16px; }
-    h2 { font-size: 1.8rem; }
-    input, select { padding: 0.5rem; font-size: 1rem; max-width: 100%; box-sizing: border-box; margin-right: 10px; }
-    .table-container { overflow-x: auto; width: 100%; margin-top: 20px; }
-    table { border-collapse: collapse; width: 100%; min-width: 600px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background-color: #f2f2f2; }
-    #pagination-wrapper { margin-top: 20px; overflow-x: auto; width: 100%; }
-    #pagination { display: flex; gap: 5px; justify-content: center; padding: 10px 0; }
-    .page-link { padding: 5px 10px; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; white-space: nowrap; }
-    .active-page { background-color: #007BFF; color: white; }
-    #helpBtn { float: right; cursor: pointer; background: none; border: none; font-size: 1.2rem; }
-    .modal { display: none; position: fixed; z-index: 9999; padding-top: 100px; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
-    .modal-content { background-color: #fff; margin: auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 8px; }
-    .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-    .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: #f4f7f9;
+      color: #333;
+    }
+    h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #helpBtn {
+      cursor: pointer;
+      background: #007BFF;
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+    }
+    input, select {
+      padding: 0.7rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-right: 10px;
+      margin-bottom: 1rem;
+    }
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 600px;
+    }
+    th, td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background: #007BFF;
+      color: white;
+      text-align: left;
+    }
+    tr:hover td {
+      background: #f1f9ff;
+    }
+    #pagination-wrapper {
+      margin-top: 20px;
+      overflow-x: auto;
+    }
+    #pagination {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      padding: 10px 0;
+      flex-wrap: wrap;
+    }
+    .page-link {
+      padding: 6px 12px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .page-link:hover {
+      background: #007BFF;
+      color: white;
+    }
+    .active-page {
+      background: #007BFF;
+      color: white;
+      font-weight: bold;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      padding-top: 80px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: white;
+      margin: auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover {
+      color: black;
+    }
   </style>
 </head>
 <body>
 
 <h2>
-  Searchable Hospital Database
-  <button id="helpBtn" title="Help">❓</button>
+  Hospital Database Search
+  <button id="helpBtn" title="Help">?</button>
 </h2>
 <input type="text" id="searchBar" placeholder="Search anything...">
 <select id="filterSelect">
